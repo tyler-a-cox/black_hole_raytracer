@@ -4,11 +4,10 @@ Ray tracing algorithm
 
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy import misc
 import time
-from ode import rk4
+import numpy as np
+from matplotlib.pyplot import imread
+import matplotlib.pyplot as plt
 
 
 class Plane:
@@ -24,10 +23,11 @@ class Plane:
 
     """
 
-    def __init__(self, path="../figures/checker_board.jpg", r=[0, 0, 1], scale=3):
+    def __init__(self, path="checker_board.jpg", r=[0, 0, 1], scale=3):
+        """ """
         self.path = path
         self.r = np.array(r)
-        self.img = misc.imread(self.path) / 255
+        self.img = imread(self.path) / 255
         ratio = self.img.shape[0] / self.img.shape[1]
         w = scale
         h = scale * ratio
@@ -37,10 +37,12 @@ class Plane:
         self.p_y = np.linspace(self.p1[1], self.p2[1], self.img.shape[0])
 
     def find_nearest(self, array, value):
+        """ """
         idx = (np.abs(array - value)).argmin()
         return idx
 
     def get_color(self, x, y):
+        """ """
         x_ind = self.find_nearest(self.p_x, x)
         y_ind = self.find_nearest(self.p_y, y)
         return self.img[y_ind][x_ind]
@@ -56,17 +58,30 @@ https://github.com/rantonels/starless/blob/master/tracer.py
 
 
 def sqrnorm(vec):
+    """ """
     return np.einsum("...i,...i", vec, vec)
 
 
 def RK4f(y, h2):
+    """ """
     f = np.zeros(y.shape)
+    print(y)
     f[0:3] = y[3:6]
     f[3:6] = -1.5 * h2 * y[0:3] / np.power(sqrnorm(y[0:3]), 2.5)
     return f
 
 
+def rk4(y, f, t, h):
+    """Runge-Kutta RK4"""
+    k1 = f(t, y)
+    k2 = f(t + 0.5 * h, y + 0.5 * h * k1)
+    k3 = f(t + 0.5 * h, y + 0.5 * h * k2)
+    k4 = f(t + h, y + h * k3)
+    return y + h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+
+
 def trace_ray(pos, theta, phi, h=0.1):
+    """ """
     v_x = np.cos(theta) * np.cos(phi)
     v_y = np.sin(theta) * np.cos(phi)
     v_z = np.sin(phi)
@@ -76,6 +91,7 @@ def trace_ray(pos, theta, phi, h=0.1):
     color = np.zeros(3)
     y = np.zeros(6)
     count = 0
+    oldv = 0
     while (sqrnorm(point)) <= 25:
         count += 1
         y[0:3] = point
@@ -91,11 +107,17 @@ def trace_ray(pos, theta, phi, h=0.1):
             color = obj.get_color(point[1] + increment[1], point[2] + increment[2])
             break
         point += increment[0:3]
+        oldv = np.copy(velocity)
+        oldvdir = oldv / np.linalg.norm(oldv)
+        vdir = velocity / np.linalg.norm(velocity)
+        print(oldvdir, vdir)
         velocity += increment[3:6]
+
     return color
 
 
 def ray_cast(w=160, h=90, cam=[-10.0, 0, 0, 0.0]):
+    """ """
     FOV_w = np.deg2rad(40)
     FOV_h = np.deg2rad(30)
     img = np.zeros((h, w, 3))
@@ -114,12 +136,12 @@ def ray_cast(w=160, h=90, cam=[-10.0, 0, 0, 0.0]):
 
 import time
 
-obj = Plane()
-CAMPOS = [-5.0, 0.0, 0.0]
-RES = np.array([80, 60])
-start = time.time()
-img = ray_cast(RES[0], RES[1], CAMPOS)
-print("Time: {} s".format(time.time() - start))
-plt.imshow(img, interpolation="nearest")
-plt.show()
-# plt.savefig('tracing_behind_320_240.png',dpi=300)
+if __name__ == "__main__":
+    obj = Plane()
+    CAMPOS = [-5.0, 0.0, 0.0]
+    RES = np.array([80, 60])
+    start = time.time()
+    img = ray_cast(RES[0], RES[1], CAMPOS)
+    print("Time: {} s".format(time.time() - start))
+    plt.imshow(img, interpolation="nearest")
+    plt.show()
